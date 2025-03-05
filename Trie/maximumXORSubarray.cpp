@@ -7,10 +7,10 @@ public:
     TrieNode* right = nullptr; // Represents bit 1
 };
 
-void insert(TrieNode* head, int n) {
+void insert(TrieNode* head, int prefixXor) {
     TrieNode* curr = head;
     for (int i = 31; i >= 0; i--) {
-        int b = (n >> i) & 1;
+        int b = (prefixXor >> i) & 1;
         if (b == 0) {
             if (!curr->left) {
                 curr->left = new TrieNode();
@@ -25,35 +25,44 @@ void insert(TrieNode* head, int n) {
     }
 }
 
-int maximumXORSubarray(TrieNode* root, int size, vector<int>& arr) {
-    int max_xor = INT_MIN;
-    for (int i = 0; i < size; i++) {
-        TrieNode* curr = root;
-        int ele = arr[i];
-        int curr_xor = 0;
-        for (int j = 31; j >= 0; j--) {
-            int b = (ele >> j) & 1;
+int query(TrieNode* root, int prefixXor) {
+    TrieNode* curr = root;
+    int max_xor = 0;
 
-            if (b == 0) {
-                if (curr->right) {
-                    curr_xor += (1 << j); // Using bitwise shift instead of pow
-                    curr = curr->right;
-                } else {
-                    curr = curr->left;
-                }
+    for (int i = 31; i >= 0; i--) {
+        int b = (prefixXor >> i) & 1;
+        if (b == 0) {
+            if (curr->right) { // Try to go opposite to maximize XOR
+                max_xor |= (1 << i);
+                curr = curr->right;
             } else {
-                if (curr->left) {
-                    curr_xor += (1 << j); // Using bitwise shift instead of pow
-                    curr = curr->left;
-                } else {
-                    curr = curr->right;
-                }
+                curr = curr->left;
+            }
+        } else {
+            if (curr->left) { // Try to go opposite to maximize XOR
+                max_xor |= (1 << i);
+                curr = curr->left;
+            } else {
+                curr = curr->right;
             }
         }
-        if (max_xor < curr_xor) {
-            max_xor = curr_xor;
-        }
     }
+    return max_xor;
+}
+
+int maximumXORSubarray(vector<int>& arr) {
+    TrieNode* root = new TrieNode();
+    
+    insert(root, 0); // Insert 0 to handle case where prefixXor itself is max
+
+    int prefixXor = 0, max_xor = 0;
+
+    for (int num : arr) {
+        prefixXor ^= num; // Compute prefix XOR
+        max_xor = max(max_xor, query(root, prefixXor)); // Find max XOR with existing prefixes
+        insert(root, prefixXor); // Insert current prefix XOR into the Trie
+    }
+
     return max_xor;
 }
 
@@ -61,14 +70,12 @@ int main() {
     int n;
     cin >> n;
     vector<int> arr(n);
-    TrieNode* root = new TrieNode();
 
     for (int i = 0; i < n; i++) {
         cin >> arr[i];
-        insert(root, arr[i]);
     }
 
-    cout << maximumXORSubarray(root, n, arr) << endl;
+    cout << maximumXORSubarray(arr) << endl;
 
     return 0;
 }
